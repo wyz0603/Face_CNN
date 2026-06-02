@@ -20,10 +20,14 @@ from face_id import FaceID
 LIVENESS_WEIGHTS = "face_liveness_weights.h5"
 IMG_SIZE = 224
 
+# 调试：在画面上叠加原始 real_prob / 身份相似度，用于校准阈值
+DEBUG = True
+
 # 活体判定
-REAL_THRESHOLD = 0.5          # 平滑后 real_prob 超过该值才算真人
+REAL_THRESHOLD = 0.3          # 平滑后 real_prob 超过该值才算真人（按你的摄像头实际分数再调）
 FRAME_HISTORY = 8             # 活体概率平滑窗口
-REQUIRED_CONSECUTIVE = 5      # 需要连续多少帧判为真人才确认（防抖、抗单帧攻击）
+REQUIRED_CONSECUTIVE = 3      # 需要连续多少帧判为真人才确认（防抖、抗单帧攻击）
+FACE_MARGIN = 0.2             # 活体输入人脸裁剪外扩比例（贴合训练数据，过紧会误判 Fake）
 
 # 身份识别
 FACE_SCORE_THRESHOLD = 0.6    # YuNet 人脸检测置信度
@@ -161,24 +165,24 @@ class Recognizer:
                 else:
                     track.update_pos(cx, cy)
 
-                # 活体
-                crop = frame[y:y + fh, x:x + fw]
+                # 活体：裁剪人脸时外扩一点 margin，更贴合训练数据（过紧易误判 Fake）
+                mx, my = int(fw * FACE_MARGIN), int(fh * FACE_MARGIN)
+                x0, y0 = max(0, x - mx), max(0, y - my)
+                x1, y1 = min(w, x + fw + mx), min(h, y + fh + my)
+                crop = frame[y0:y1, x0:x1]
                 fake_prob, real_prob = self._liveness(crop)
                 track.push_liveness(fake_prob, real_prob)
                 real = track.is_real()
 
-                # 身份（仅在真人时才识别，假脸不浪费算力也避免给照片标名）
-                name = None
-                if real:
-                    feat = self.face_id.embedding(frame, face)
-                    matched, _ = self.face_id.identify(feat)
-                    track.push_id(matched)
-                    name = track.voted_name()
-                else:
-                    track.push_id(None)
+                # 身份：对每张检测到的人脸都识别（与活体解耦，便于验证 / 调试）
+                feat = self.face_id.embedding(frame, face)
+                matched, id_score = self.face_id.identify(feat)
+                track.push_id(matched)
+                name = track.voted_name()
 
                 avg_fake, avg_real = track.smoothed()
                 if real:
+                    # 真人：若匹配身份库则标名字，否则仅 Real
                     label = name if name else "Real"
                     color = (0, 255, 0)
                     conf = avg_real
@@ -194,6 +198,8 @@ class Recognizer:
                     'real': real,
                     'conf': conf,
                     'color': color,
+                    'real_prob': avg_real,
+                    'id_score': id_score,
                 })
 
         self._age_tracks()
@@ -209,6 +215,14 @@ def draw(frame, results):
         cv2.rectangle(frame, (x, y - 28), (x + max(w, 120), y), color, -1)
         cv2.putText(frame, text, (x + 5, y - 8),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+
+        if DEBUG:
+            # 在框下方显示原始分数，便于校准阈值：
+            #   real_prob=活体真人概率(>=REAL_THRESHOLD 才算真人)
+            #   id=与 fengyizhuo 的相似度(>=COSINE_THRESHOLD 才匹配)
+            dbg = f"real_prob={r['real_prob']:.2f} (thr {REAL_THRESHOLD})  id={r['id_score']:.2f} (thr {COSINE_THRESHOLD})"
+            cv2.putText(frame, dbg, (x, y + h + 18),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 1)
 
 
 def main():
