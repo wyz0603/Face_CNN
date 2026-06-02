@@ -1,6 +1,12 @@
 # 大型数据集（公开数据集，体积过大，请自行下载到此目录）
 LCC_FASD/
 
+# 自采训练数据集（含人脸/他人画面，体积大，不入库）
+fyz/
+
+# 权重备份
+*.bak
+
 # 活体模型权重 face_liveness_weights.h5 通过 Git LFS 上传（见 .gitattributes）
 face_liveness.keras
 face_liveness_best.keras

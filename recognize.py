@@ -24,7 +24,7 @@ IMG_SIZE = 224
 DEBUG = True
 
 # 活体判定
-REAL_THRESHOLD = 0.3          # 平滑后 real_prob 超过该值才算真人（按你的摄像头实际分数再调）
+REAL_THRESHOLD = 0.5          # 平滑后 real_prob 超过该值才算真人（重训后真人≈1.0/假脸≈0.0，分得很开）
 FRAME_HISTORY = 8             # 活体概率平滑窗口
 REQUIRED_CONSECUTIVE = 3      # 需要连续多少帧判为真人才确认（防抖、抗单帧攻击）
 FACE_MARGIN = 0.2             # 活体输入人脸裁剪外扩比例（贴合训练数据，过紧会误判 Fake）
