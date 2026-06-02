@@ -1,0 +1,8 @@
+# 环境依赖 (Linux / Python 3.8)
+# 活体检测使用 TensorFlow VGG16；身份识别使用 OpenCV 内置的 YuNet + SFace。
+tensorflow==2.13.1
+opencv-python>=4.10        # 需自带 cv2.FaceDetectorYN / cv2.FaceRecognizerSF
+numpy
+imutils
+scikit-learn
+matplotlib
