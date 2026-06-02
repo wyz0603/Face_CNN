@@ -1,8 +1,7 @@
 # 大型数据集（公开数据集，体积过大，请自行下载到此目录）
 LCC_FASD/
 
-# 活体模型权重 106MB，超过 GitHub 100MB 上限，单独获取（见 README）
-face_liveness_weights.h5
+# 活体模型权重 face_liveness_weights.h5 通过 Git LFS 上传（见 .gitattributes）
 face_liveness.keras
 face_liveness_best.keras
 

@@ -55,9 +55,10 @@ pip install -r requirements.txt
 
 如缺失，可从 [OpenCV Zoo](https://github.com/opencv/opencv_zoo) 重新下载到 `models/`。
 
-> ⚠️ **活体模型权重未随仓库提供**：`face_liveness_weights.h5`（约 106MB）超过 GitHub 100MB
-> 上限，未纳入版本库。请单独获取该权重文件并放到项目根目录后，再运行 `recognize.py`。
-> 同理 `LCC_FASD/` 训练数据集（约 4.7GB）也未上传，需要训练时请自行下载到该目录。
+> ⚠️ **活体模型权重通过 Git LFS 提供**：`face_liveness_weights.h5`（约 106MB）以 Git LFS 方式
+> 纳入版本库。clone 时请确保已安装 [Git LFS](https://git-lfs.com)（`git lfs install`），
+> 否则拉下来的只是指针文件而非真实权重。若已 clone 但权重不对，执行 `git lfs pull` 补全。
+> 训练数据集 `LCC_FASD/`（约 4.7GB）仍未上传，需要训练时请自行下载到该目录。
 
 ---
 
