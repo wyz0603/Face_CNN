@@ -113,6 +113,31 @@ python test_recognize_video.py 某段视频.mp4 --show    # 同时显示画面
    ```
 3. 重新运行 `python enroll.py`，即可把新身份并入 `identities.npz`。**全程无需训练。**
 
+---
+
+## 4.5 活体模型适配你的摄像头（重要）
+
+随仓库的活体权重 `face_liveness_weights.h5` 在 LCC-FASD 数据集上训练，**在不同摄像头/光线下
+可能把真人判成 Fake**（这是这类模型常见的"域偏移"）。若出现"真人一直显示 Fake"，
+请用你自己的摄像头采集样本，微调适配（只需几分钟，CPU 即可）：
+
+```bash
+# 1) 采集真人样本：本人正对镜头，缓慢转头/移动/变表情/换距离，光线尽量多样
+python collect_samples.py --label real  --max-samples 400
+
+# 2) 采集翻拍样本：对着镜头展示 打印照片 / 手机里的照片 / 手机播放的视频，多换几张
+python collect_samples.py --label spoof --max-samples 400
+
+# 3) 微调（会自动备份旧权重为 .bak，写出新的 face_liveness_weights.h5）
+python train_custom.py
+
+# 4) 重新运行，真人应判为 Real
+python recognize.py
+```
+
+> 诀窍：spoof 样本越多样（不同照片、不同手机、不同角度/远近/反光），泛化越好。
+> 想验证当前模型在你设备上的真实分数，可运行 `python diagnose.py`。
+
 > 建议每人提供 20+ 张不同角度/表情的清晰正脸照，识别更稳。
 
 ---
