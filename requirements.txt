@@ -6,3 +6,4 @@ numpy
 imutils
 scikit-learn
 matplotlib
+pillow

@@ -9,12 +9,58 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import cv2
 import numpy as np
 from collections import deque
+from PIL import Image, ImageDraw, ImageFont
 
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Flatten, Dropout
 from tensorflow.keras.applications import VGG16
 
 from face_id import FaceID
+
+# 识别到的身份要展示的资料（按身份名 -> 多行文字）
+IDENTITY_INFO = {
+    "fengyizhuo": ["冯毅卓", "男", "信息与人工智能学院05"],
+}
+
+# ---- 中文文字渲染（OpenCV 不支持中文，用 Pillow + 中文字体）----
+_CN_FONT = None
+
+
+def _cn_font(size=22):
+    global _CN_FONT
+    if _CN_FONT is not None:
+        return _CN_FONT
+    candidates = [
+        "C:/Windows/Fonts/msyh.ttc", "C:/Windows/Fonts/msyhl.ttc",
+        "C:/Windows/Fonts/simhei.ttf", "C:/Windows/Fonts/simsun.ttc",
+        "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+        "/usr/share/fonts/opentype/noto/NotoSerifCJK-Regular.ttc",
+        "/usr/share/fonts/truetype/arphic/uming.ttc",
+    ]
+    for p in candidates:
+        if os.path.exists(p):
+            try:
+                _CN_FONT = ImageFont.truetype(p, size)
+                return _CN_FONT
+            except Exception:
+                pass
+    _CN_FONT = ImageFont.load_default()
+    return _CN_FONT
+
+
+def draw_cn(frame, items):
+    """items: [(text, (x, y), (r, g, b)), ...]，一次性把中文画到 BGR 帧上。"""
+    if not items:
+        return frame
+    font = _cn_font()
+    img = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+    d = ImageDraw.Draw(img)
+    for text, (x, y), color in items:
+        # 描边提升可读性
+        for dx, dy in ((-1, -1), (1, -1), (-1, 1), (1, 1)):
+            d.text((x + dx, y + dy), text, font=font, fill=(0, 0, 0))
+        d.text((x, y), text, font=font, fill=color)
+    return cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
 
 # ================= 配置参数 =================
 LIVENESS_WEIGHTS = "face_liveness_weights.h5"
@@ -207,14 +253,24 @@ class Recognizer:
 
 
 def draw(frame, results):
+    cn_items = []  # 需要用中文渲染的文字（资料卡）
     for r in results:
         x, y, w, h = r['bbox']
         color = r['color']
-        text = f"{r['label']} {r['conf']*100:.0f}%"
+        # 英文活体状态(OpenCV 可画)，中文姓名与资料另用 Pillow 画
+        status = "Real" if r['real'] else "Fake"
+        text = f"{status} {r['conf']*100:.0f}%"
         cv2.rectangle(frame, (x, y), (x + w, y + h), color, 2)
         cv2.rectangle(frame, (x, y - 28), (x + max(w, 120), y), color, -1)
         cv2.putText(frame, text, (x + 5, y - 8),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+
+        # 真人 + 命中身份库 -> 在框右侧显示资料卡
+        if r['real'] and r['name'] in IDENTITY_INFO:
+            info = IDENTITY_INFO[r['name']]
+            px, py = x + w + 8, y
+            for i, line in enumerate(info):
+                cn_items.append((line, (px, py + i * 28), (0, 255, 0)))
 
         if DEBUG:
             # 在框下方显示原始分数，便于校准阈值：
@@ -223,6 +279,8 @@ def draw(frame, results):
             dbg = f"real_prob={r['real_prob']:.2f} (thr {REAL_THRESHOLD})  id={r['id_score']:.2f} (thr {COSINE_THRESHOLD})"
             cv2.putText(frame, dbg, (x, y + h + 18),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 1)
+
+    return draw_cn(frame, cn_items)
 
 
 def main():
@@ -238,7 +296,7 @@ def main():
             break
         frame = cv2.flip(frame, 1)
         results = rec.process(frame)
-        draw(frame, results)
+        frame = draw(frame, results)
         cv2.imshow("Liveness + Face ID", frame)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break

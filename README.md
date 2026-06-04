@@ -138,6 +138,21 @@ python recognize.py
 > 诀窍：spoof 样本越多样（不同照片、不同手机、不同角度/远近/反光），泛化越好。
 > 想验证当前模型在你设备上的真实分数，可运行 `python diagnose.py`。
 
+### 数据集结构与训练脚本
+
+- `fyz/real`、`fyz/fake`：自采数据集（整帧即可，脚本会自动 YuNet 裁脸）。
+- `python train_fyz.py`：会合并 `fyz/{real,fake}` **和** `custom_data/{real,spoof}`，
+  自动裁脸 + 增强（亮度/模糊/JPEG/翻转）后微调，输出新的 `face_liveness_weights.h5`。
+
+> **若手机照片被误判为 Real**：这是因为"真人"类样本若用的是清晰自拍照，模型学不到真正的
+> 活体线索。请补采**多种翻拍攻击**（手机照片、打印照片、不同手机/角度/反光）放进 `fyz/fake`，
+> 重新 `python train_fyz.py` 即可显著改善。
+
+### 识别对象的资料展示
+
+`recognize.py` 顶部 `IDENTITY_INFO` 配置每个身份要显示的中文资料（姓名/性别/学院等），
+识别为该人且判定真人时会在框旁显示。中文渲染依赖 `pillow`（已加入 requirements）。
+
 > 建议每人提供 20+ 张不同角度/表情的清晰正脸照，识别更稳。
 
 ---

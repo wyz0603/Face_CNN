@@ -35,7 +35,7 @@ def main():
             if r['name']:
                 name_stats[r['name']] += 1
         if show:
-            draw(frame, results)
+            frame = draw(frame, results)
             cv2.imshow("test", frame)
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
