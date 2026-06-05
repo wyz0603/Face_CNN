@@ -161,8 +161,15 @@ def main():
     try:
         if os.path.exists(LIVENESS_WEIGHTS):
             os.chmod(LIVENESS_WEIGHTS, stat.S_IWRITE)        # 清除只读
-            shutil.copy(LIVENESS_WEIGHTS, LIVENESS_WEIGHTS + ".bak")
-            print(f"[INFO] 旧权重已备份为 {LIVENESS_WEIGHTS}.bak")
+            try:  # 备份是尽力而为，失败不影响覆盖
+                bak = LIVENESS_WEIGHTS + ".bak"
+                if os.path.exists(bak):
+                    os.chmod(bak, stat.S_IWRITE)
+                    os.remove(bak)
+                shutil.copy(LIVENESS_WEIGHTS, bak)
+                print(f"[INFO] 旧权重已备份为 {bak}")
+            except Exception as be:
+                print(f"[!] 备份旧权重失败(忽略): {be}")
         os.replace(tmp, LIVENESS_WEIGHTS)
         print(f"[INFO] 已更新 {LIVENESS_WEIGHTS}，现在运行 python recognize.py")
     except Exception as e:
