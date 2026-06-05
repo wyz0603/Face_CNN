@@ -151,11 +151,25 @@ def main():
     for df, dh in zip(dense_full, dense_head):
         df.set_weights(dh.get_weights())
 
-    if os.path.exists(LIVENESS_WEIGHTS):
-        shutil.copy(LIVENESS_WEIGHTS, LIVENESS_WEIGHTS + ".bak")
-        print(f"[INFO] 旧权重已备份为 {LIVENESS_WEIGHTS}.bak")
-    full.save_weights(LIVENESS_WEIGHTS)
-    print(f"[INFO] 新权重已保存到 {LIVENESS_WEIGHTS}")
+    # 先存到一个新文件（即使目标文件被占用/只读也不会丢失训练成果）
+    import stat
+    tmp = LIVENESS_WEIGHTS + ".new.h5"
+    full.save_weights(tmp)
+    print(f"[INFO] 新权重已保存到 {tmp}")
+
+    # 再尝试覆盖正式权重文件
+    try:
+        if os.path.exists(LIVENESS_WEIGHTS):
+            os.chmod(LIVENESS_WEIGHTS, stat.S_IWRITE)        # 清除只读
+            shutil.copy(LIVENESS_WEIGHTS, LIVENESS_WEIGHTS + ".bak")
+            print(f"[INFO] 旧权重已备份为 {LIVENESS_WEIGHTS}.bak")
+        os.replace(tmp, LIVENESS_WEIGHTS)
+        print(f"[INFO] 已更新 {LIVENESS_WEIGHTS}，现在运行 python recognize.py")
+    except Exception as e:
+        print(f"[!] 无法覆盖 {LIVENESS_WEIGHTS}: {e}")
+        print(f"[!] 训练成果已安全保存在 {tmp}。")
+        print(f"[!] 请关闭占用该文件的程序(如另一个 recognize.py 窗口)，再手动改名：")
+        print(f"      del {LIVENESS_WEIGHTS}  &&  ren {tmp} {LIVENESS_WEIGHTS}")
 
 
 if __name__ == "__main__":
